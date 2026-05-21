@@ -61,7 +61,9 @@ public class Main {
     static final TextAttributes HUD_VALUE  = new TextAttributes(Color.WHITE,               Color.BLACK);
     static final TextAttributes HUD_HINT   = new TextAttributes(Color.GRAY,                Color.BLACK);
     static final TextAttributes HUD_SLOT   = new TextAttributes(new Color(130, 130, 130),  Color.BLACK);
-    static final TextAttributes HUD_EMPTY  = new TextAttributes(new Color(55, 55, 55),     Color.BLACK);
+    static final TextAttributes HUD_EMPTY   = new TextAttributes(new Color(55, 55, 55),    Color.BLACK);
+    static final TextAttributes TREE_BRANCH = new TextAttributes(new Color(80, 130, 80),   Color.BLACK);
+    static final TextAttributes TREE_CURSOR = new TextAttributes(new Color(255, 200, 0),   Color.BLACK);
 
     public static int     currentScreen   = 1;
     public static boolean treeFinalized   = false;
@@ -767,13 +769,14 @@ public class Main {
             for (int y = 0; y < Rows; y++)
                 cn.getTextWindow().output(x, y, ' ');
 
-        cn.getTextWindow().output(17, 3, '/');  cn.getTextWindow().output(27, 3, '\\');
-        cn.getTextWindow().output(9,  5, '/');  cn.getTextWindow().output(15, 5, '\\');
-        cn.getTextWindow().output(29, 5, '/');  cn.getTextWindow().output(35, 5, '\\');
-        cn.getTextWindow().output(4,  7, '/');  cn.getTextWindow().output(8,  7, '\\');
-        cn.getTextWindow().output(16, 7, '/');  cn.getTextWindow().output(20, 7, '\\');
-        cn.getTextWindow().output(24, 7, '/');  cn.getTextWindow().output(28, 7, '\\');
-        cn.getTextWindow().output(36, 7, '/');  cn.getTextWindow().output(40, 7, '\\');
+        // Branch lines in dim green
+        cn.getTextWindow().output(17, 3, '/', TREE_BRANCH);  cn.getTextWindow().output(27, 3, '\\', TREE_BRANCH);
+        cn.getTextWindow().output(9,  5, '/', TREE_BRANCH);  cn.getTextWindow().output(15, 5, '\\', TREE_BRANCH);
+        cn.getTextWindow().output(29, 5, '/', TREE_BRANCH);  cn.getTextWindow().output(35, 5, '\\', TREE_BRANCH);
+        cn.getTextWindow().output(4,  7, '/', TREE_BRANCH);  cn.getTextWindow().output(8,  7, '\\', TREE_BRANCH);
+        cn.getTextWindow().output(16, 7, '/', TREE_BRANCH);  cn.getTextWindow().output(20, 7, '\\', TREE_BRANCH);
+        cn.getTextWindow().output(24, 7, '/', TREE_BRANCH);  cn.getTextWindow().output(28, 7, '\\', TREE_BRANCH);
+        cn.getTextWindow().output(36, 7, '/', TREE_BRANCH);  cn.getTextWindow().output(40, 7, '\\', TREE_BRANCH);
 
         char[] nodes = exprTree.getNodes();
         int cursor   = exprTree.getCursor();
@@ -781,18 +784,24 @@ public class Main {
         for (int i = 1; i <= 15; i++) {
             int cx      = treeX[i];
             int cy      = treeY[i];
-            char symbol = nodes[i] == 0 ? '_' : nodes[i];
-            if (i == cursor)
-                put(cx - 1, cy, "[" + symbol + "]");
-            else
-                cn.getTextWindow().output(cx, cy, symbol);
+            boolean empty  = nodes[i] == 0;
+            char symbol    = empty ? '_' : nodes[i];
+            TextAttributes symColor = empty ? HUD_EMPTY : itemColor(symbol);
+            if (i == cursor) {
+                cn.getTextWindow().output(cx - 1, cy, '[', TREE_CURSOR);
+                cn.getTextWindow().output(cx,     cy, symbol, symColor);
+                cn.getTextWindow().output(cx + 1, cy, ']', TREE_CURSOR);
+            } else {
+                cn.getTextWindow().output(cx, cy, symbol, symColor);
+            }
         }
 
-        put(2, 12, "W/A/D=Move(-1)  T=Place  R=Remove(-2)  ");
-        put(2, 13, "F=Finalize  [M]=ToggleMode  [Space]=Fire");
+        putC(2, 12, "W/A/D=Move(-1)  T=Place  R=Remove(-2)  ", HUD_HINT);
+        putC(2, 13, "F=Finalize  [M]=ToggleMode  [Space]=Fire", HUD_HINT);
 
         if (treeInvalidMsg) {
-            put(2, 15, "Invalid tree! Need >=3 variables and depth >=3. (-10 pts)");
+            putC(2, 15, "Invalid tree! Need >=3 variables and depth >=3. (-10 pts)",
+                 new TextAttributes(Color.RED, Color.BLACK));
             treeInvalidMsg = false;
         } else {
             put(2, 15, "                                                          ");
