@@ -382,10 +382,12 @@ public class Main {
 
     /** Full right-panel redraw — call on startup and every screen switch. */
     public static void drawHUD() {
+        // Wipe all 30 rows of the right panel so no menu or old screen content bleeds in
         for (int x = 45; x < 80; x++)
-            for (int y = 0; y < Rows; y++)
+            for (int y = 0; y < 30; y++)
                 cn.getTextWindow().output(x, y, ' ');
 
+        // Box: rows 0-16
         hudTopRow(0);
         hudSideRow(1);
         putC(51, 1, "T R E E   &   T A B L E", HUD_TITLE);
@@ -397,16 +399,11 @@ public class Main {
         for (int r = 6; r <= 11; r++) hudSideRow(r);
         hudMidRow(12);
         hudSideRow(13);
-        putC(55, 13, "B A C K P A C K", HUD_SECT);
+        putC(47, 13, "1=Maze  2=Tree  3=K-Map", HUD_HINT);
         hudSideRow(14);
+        putC(47, 14, "M=Toggle    SPACE=Fire", HUD_HINT);
         hudSideRow(15);
-        hudMidRow(16);
-        hudSideRow(17);
-        putC(47, 17, "1=Maze  2=Tree  3=K-Map", HUD_HINT);
-        hudSideRow(18);
-        putC(47, 18, "M=Toggle    SPACE=Fire", HUD_HINT);
-        hudSideRow(19);
-        hudBotRow(20);
+        hudBotRow(16);
 
         input_list();
         refreshStats();
@@ -474,32 +471,33 @@ public class Main {
     }
 
     public static void Backpack_Writer() {
-        char[] slots = new char[8];
+        // Label centered above the stack (col 58 = center of right panel minus half of "BACKPACK")
+        putC(58, 17, "BACKPACK", HUD_SECT);
         Stack temp = new Stack(8);
+        // Draw 8 slots top→bottom: row 18 = top of stack (most recent), row 25 = bottom (first collected)
         for (int i = 0; i < 8; i++) {
+            int row = 18 + i;
             if (!backpack.isEmpty()) {
-                slots[i] = (char) backpack.pop();
-                temp.push(slots[i]);
+                char sym = (char) backpack.pop();
+                temp.push(sym);
+                cn.getTextWindow().output(60, row, '|', HUD_SLOT);
+                cn.getTextWindow().output(61, row, ' ', HUD_SLOT);
+                cn.getTextWindow().output(62, row, sym,  itemColor(sym));
+                cn.getTextWindow().output(63, row, ' ', HUD_SLOT);
+                cn.getTextWindow().output(64, row, '|', HUD_SLOT);
+            } else {
+                cn.getTextWindow().output(60, row, '|',  HUD_SLOT);
+                cn.getTextWindow().output(61, row, ' ',  HUD_EMPTY);
+                cn.getTextWindow().output(62, row, ' ',  HUD_EMPTY);
+                cn.getTextWindow().output(63, row, ' ',  HUD_EMPTY);
+                cn.getTextWindow().output(64, row, '|',  HUD_SLOT);
             }
         }
+        // Closed bottom
+        put(60, 26, "+---+");
+        // Restore backpack (double-reversal preserves original order)
         int k = temp.size();
         for (int i = 0; i < k; i++) backpack.push(temp.pop());
-        drawSlotRow(14, slots, 0);
-        drawSlotRow(15, slots, 4);
-    }
-
-    private static void drawSlotRow(int row, char[] slots, int startIdx) {
-        int col = 47;
-        for (int i = 0; i < 4; i++) {
-            char sym = (startIdx + i < slots.length) ? slots[startIdx + i] : 0;
-            cn.getTextWindow().output(col,   row, (char)('0' + startIdx + i + 1), HUD_SLOT);
-            cn.getTextWindow().output(col+1, row, ':',   HUD_SLOT);
-            cn.getTextWindow().output(col+2, row, '[',   HUD_SLOT);
-            cn.getTextWindow().output(col+3, row, sym != 0 ? sym : ' ', sym != 0 ? itemColor(sym) : HUD_EMPTY);
-            cn.getTextWindow().output(col+4, row, ']',   HUD_SLOT);
-            col += 8;
-        }
-        for (int c = 76; c <= 78; c++) cn.getTextWindow().output(c, row, ' ');
     }
 
     private static TextAttributes itemColor(char c) {
@@ -510,23 +508,23 @@ public class Main {
     }
 
     private static void hudTopRow(int row) {
-        cn.getTextWindow().output(45, row, '╔', HUD_BORDER);
-        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '═', HUD_BORDER);
-        cn.getTextWindow().output(79, row, '╗', HUD_BORDER);
+        cn.getTextWindow().output(45, row, '+', HUD_BORDER);
+        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '-', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '+', HUD_BORDER);
     }
     private static void hudMidRow(int row) {
-        cn.getTextWindow().output(45, row, '╠', HUD_BORDER);
-        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '═', HUD_BORDER);
-        cn.getTextWindow().output(79, row, '╣', HUD_BORDER);
+        cn.getTextWindow().output(45, row, '+', HUD_BORDER);
+        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '-', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '+', HUD_BORDER);
     }
     private static void hudBotRow(int row) {
-        cn.getTextWindow().output(45, row, '╚', HUD_BORDER);
-        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '═', HUD_BORDER);
-        cn.getTextWindow().output(79, row, '╝', HUD_BORDER);
+        cn.getTextWindow().output(45, row, '+', HUD_BORDER);
+        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '-', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '+', HUD_BORDER);
     }
     private static void hudSideRow(int row) {
-        cn.getTextWindow().output(45, row, '║', HUD_BORDER);
-        cn.getTextWindow().output(79, row, '║', HUD_BORDER);
+        cn.getTextWindow().output(45, row, '|', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '|', HUD_BORDER);
     }
 
     private static void clearMazeArea() {
