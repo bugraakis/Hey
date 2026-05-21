@@ -77,7 +77,7 @@ public class Main {
 
         Menu menu = new Menu();
         int choice = menu.show(cn, highScores);
-        if (choice == 3) System.exit(0);
+        if (choice == 4) System.exit(0);
 
         maze = Maze.loadFromFile("maze.txt");
         scanRobotsFromMaze();

@@ -26,8 +26,9 @@ public class Menu {
                 if (k == KeyEvent.VK_1) { selection = 1; return; }
                 if (k == KeyEvent.VK_2) { selection = 2; return; }
                 if (k == KeyEvent.VK_3) { selection = 3; return; }
-                if (k == KeyEvent.VK_UP)    { cursor = (cursor + 2) % 3; drawMenu(cn); }
-                if (k == KeyEvent.VK_DOWN)  { cursor = (cursor + 1) % 3; drawMenu(cn); }
+                if (k == KeyEvent.VK_4) { selection = 4; return; }
+                if (k == KeyEvent.VK_UP)    { cursor = (cursor + 3) % 4; drawMenu(cn); }
+                if (k == KeyEvent.VK_DOWN)  { cursor = (cursor + 1) % 4; drawMenu(cn); }
                 if (k == KeyEvent.VK_ENTER) { selection = cursor + 1; }
             }
         };
@@ -38,17 +39,15 @@ public class Menu {
         }
         cn.getTextWindow().removeKeyListener(kl);
 
-        if (selection == 2) {
-            showHighScores(cn, scores);
-            selection = 0;
-            return show(cn, scores);
-        }
-        return selection;
+        if (selection == 2) { showHighScores(cn, scores); selection = 0; return show(cn, scores); }
+        if (selection == 3) { showHelp(cn);                selection = 0; return show(cn, scores); }
+        return selection; // 1 = start game, 4 = exit
     }
 
-    // 5-row pixel font for "TREE" — each string is exactly 30 chars wide
-    // Letters: T(6) + gap(2) + R(6) + gap(2) + E(6) + gap(2) + E(6) = 30
-    private static final String[] TITLE_ROWS = {
+    // ── Pixel font ─────────────────────────────────────────────────────────────
+    // Each letter is 6 chars wide, gaps between letters are 2 chars.
+    // TREE: T+R+E+E with 3 gaps = 6*4 + 2*3 = 30 wide
+    private static final String[] TREE_ROWS = {
         "######  #####   ######  ######",
         "  ##    ##  ##  ##      ##    ",
         "  ##    #####   ####    ####  ",
@@ -56,83 +55,43 @@ public class Menu {
         "  ##    ##  ##  ######  ######"
     };
 
-    // Fixed star positions [col, row] — keep away from content rows 1-5, 7, 13, 16, 19
-    private static final int[][] STARS = {
-        { 1, 0},{10, 0},{20, 0},{30, 0},{42, 0},{55, 0},{65, 0},{75, 0},
-        { 4, 6},{14, 6},{36, 6},{50, 6},{60, 6},{70, 6},{79, 6},
-        { 0, 8},{ 8, 9},{18, 9},{28, 9},{38, 9},{48, 9},{58, 9},{68, 9},{77, 9},
-        { 3,10},{13,10},{33,10},{44,10},{54,10},{64,10},{74,10},
-        { 6,11},{16,11},{26,11},{37,11},{47,11},{57,11},{67,11},{76,11},
-        { 2,12},{12,12},{22,12},{32,12},{43,12},{53,12},{63,12},{72,12},
-        { 5,14},{78,14},
-        { 1,15},{71,15},
-        { 3,17},{77,17},
-        { 7,18},{74,18},
-        { 4,20},{14,20},{24,20},{34,20},{45,20},{55,20},{65,20},{74,20},
-        { 7,21},{17,21},{27,21},{37,21},{47,21},{59,21},{69,21},{77,21},
-        { 2,22},{12,22},{22,22},{32,22},{43,22},{53,22},{63,22},{73,22},
-        { 5,23},{15,23},{25,23},{36,23},{46,23},{56,23},{66,23},{75,23},
-        { 0,24},{10,24},{20,24},{30,24},{40,24},{50,24},{60,24},{70,24},{79,24},
-        { 3,25},{13,25},{23,25},{33,25},{44,25},{54,25},{64,25},{74,25},
-        { 6,26},{16,26},{26,26},{37,26},{47,26},{57,26},{67,26},{77,26},
-        { 4,29},{12,29},{22,29},{33,29},{43,29},{53,29},{63,29},{73,29},
+    // TABLE: T+A+B+L+E with 4 gaps = 6*5 + 2*4 = 38 wide
+    private static final String[] TABLE_ROWS = {
+        "######   ####   #####   ##      ######",
+        "  ##    ##  ##  ##  ##  ##      ##    ",
+        "  ##    ######  #####   ##      ####  ",
+        "  ##    ##  ##  ##  ##  ##      ##    ",
+        "  ##    ##  ##  #####   ######  ######"
     };
 
     private static final String[] OPTIONS  = {
         "S T A R T   G A M E",
         "H I G H   S C O R E S",
+        "H E L P",
         "E X I T"
     };
-    private static final int[] OPT_ROWS = {13, 16, 19};
+    private static final int[] OPT_ROWS = {14, 17, 20, 23};
 
-    // ── Drawing ────────────────────────────────────────────────────────────────
+    // ── Main menu ──────────────────────────────────────────────────────────────
 
     private void drawMenu(enigma.console.Console cn) {
         clearScreen(cn);
-        drawStars(cn);
-        drawTitle(cn);
-        drawSubtitle(cn);
+        drawPixelTitle(cn, TREE_ROWS,  new Color(80, 100, 255), 1);
+        drawPixelTitle(cn, TABLE_ROWS, new Color(210, 80, 10),  7);
         drawMenuItems(cn);
         drawFooter(cn);
     }
 
-    private void clearScreen(enigma.console.Console cn) {
-        for (int r = 0; r < ROWS; r++)
-            for (int c = 0; c < COLS; c++)
-                cn.getTextWindow().output(c, r, ' ');
-    }
-
-    private void drawStars(enigma.console.Console cn) {
-        TextAttributes dim = new TextAttributes(Color.DARK_GRAY, Color.BLACK);
-        for (int[] s : STARS)
-            cn.getTextWindow().output(s[0], s[1], '.', dim);
-    }
-
-    private void drawTitle(enigma.console.Console cn) {
-        TextAttributes blue = new TextAttributes(new Color(80, 100, 255), Color.BLACK);
-        int startCol = (COLS - TITLE_ROWS[0].length()) / 2; // = 25
-        for (int r = 0; r < TITLE_ROWS.length; r++) {
-            String line = TITLE_ROWS[r];
+    private void drawPixelTitle(enigma.console.Console cn, String[] rows, Color color, int startRow) {
+        TextAttributes ta = new TextAttributes(color, Color.BLACK);
+        int startCol = (COLS - rows[0].length()) / 2;
+        for (int r = 0; r < rows.length; r++) {
+            String line = rows[r];
             for (int c = 0; c < line.length(); c++) {
                 if (line.charAt(c) != ' ')
-                    cn.getTextWindow().output(startCol + c, 1 + r, line.charAt(c), blue);
+                    cn.getTextWindow().output(startCol + c, startRow + r, line.charAt(c), ta);
             }
         }
-    }
-
-    private void drawSubtitle(enigma.console.Console cn) {
-        TextAttributes orange = new TextAttributes(new Color(210, 80, 10), Color.BLACK);
-        TextAttributes lgray  = new TextAttributes(Color.LIGHT_GRAY,      Color.BLACK);
-
-        String sub = "&   T A B L E";
-        int sc = (COLS - sub.length()) / 2;
-        for (int i = 0; i < sub.length(); i++)
-            cn.getTextWindow().output(sc + i, 7, sub.charAt(i), orange);
-
-        String ver = "v1.0";
-        int vc = COLS - ver.length() - 2;
-        for (int i = 0; i < ver.length(); i++)
-            cn.getTextWindow().output(vc + i, 8, ver.charAt(i), lgray);
     }
 
     private void drawMenuItems(enigma.console.Console cn) {
@@ -161,48 +120,85 @@ public class Menu {
 
     private void drawFooter(enigma.console.Console cn) {
         TextAttributes gray = new TextAttributes(Color.GRAY, Color.BLACK);
-
         String sep  = "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -";
-        int    sepC = (COLS - sep.length()) / 2;
-        for (int i = 0; i < sep.length(); i++)
-            cn.getTextWindow().output(sepC + i, 27, sep.charAt(i), gray);
-
-        String foot = "UP / DOWN  to navigate      ENTER  to select      1 / 2 / 3  direct";
-        int    footC = (COLS - foot.length()) / 2;
-        for (int i = 0; i < foot.length(); i++)
-            cn.getTextWindow().output(footC + i, 28, foot.charAt(i), gray);
+        String foot = "UP / DOWN  navigate      ENTER  select      1 / 2 / 3 / 4  direct";
+        putCentered(cn, 27, sep,  gray);
+        putCentered(cn, 28, foot, gray);
     }
 
     // ── High Score Screen ──────────────────────────────────────────────────────
 
     private void showHighScores(enigma.console.Console cn, HighScoreList scores) {
         clearScreen(cn);
-        drawStars(cn);
-
         TextAttributes titleCol = new TextAttributes(new Color(80, 100, 255), Color.BLACK);
         TextAttributes textCol  = new TextAttributes(Color.WHITE,              Color.BLACK);
         TextAttributes grayCol  = new TextAttributes(Color.GRAY,               Color.BLACK);
 
-        String hdr = "H I G H   S C O R E S";
-        int hc = (COLS - hdr.length()) / 2;
-        for (int i = 0; i < hdr.length(); i++)
-            cn.getTextWindow().output(hc + i, 3, hdr.charAt(i), titleCol);
+        putCentered(cn, 3, "H I G H   S C O R E S", titleCol);
 
         if (scores != null && scores.getSize() > 0) {
             scores.display(cn, 20, 6);
         } else {
-            String none = "( no scores yet )";
-            int nc = (COLS - none.length()) / 2;
-            for (int i = 0; i < none.length(); i++)
-                cn.getTextWindow().output(nc + i, 8, none.charAt(i), textCol);
+            putCentered(cn, 8, "( no scores yet )", textCol);
         }
 
-        String back = "Press any key to return...";
-        int bc = (COLS - back.length()) / 2;
-        for (int i = 0; i < back.length(); i++)
-            cn.getTextWindow().output(bc + i, 27, back.charAt(i), grayCol);
-
+        putCentered(cn, 28, "Press any key to return...", grayCol);
         waitForKey(cn);
+    }
+
+    // ── Help Screen ────────────────────────────────────────────────────────────
+
+    private void showHelp(enigma.console.Console cn) {
+        clearScreen(cn);
+        TextAttributes titleCol   = new TextAttributes(new Color(80, 100, 255), Color.BLACK);
+        TextAttributes sectionCol = new TextAttributes(new Color(210, 150, 0),  Color.BLACK);
+        TextAttributes textCol    = new TextAttributes(Color.WHITE,              Color.BLACK);
+        TextAttributes dimCol     = new TextAttributes(Color.LIGHT_GRAY,         Color.BLACK);
+        TextAttributes grayCol    = new TextAttributes(Color.GRAY,               Color.BLACK);
+
+        putCentered(cn, 1, "G A M E   F E A T U R E S   &   M E C H A N I C S", titleCol);
+        putCentered(cn, 2, "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", grayCol);
+
+        put(cn, 2,  4, "SCREEN 1  -  MAZE", sectionCol);
+        put(cn, 2,  5, "  Arrow Keys : Move player    SPACE : Fire projectile    M : Toggle storage", textCol);
+        put(cn, 2,  6, "  Collect logic symbols (A-D, ~, ^, v, +, >) scattered across the maze.", dimCol);
+        put(cn, 2,  7, "  Robots deal 5 HP damage per tick when adjacent. Shoot them for +50 pts.", dimCol);
+
+        put(cn, 2,  9, "SCREEN 2  -  EXPRESSION TREE", sectionCol);
+        put(cn, 2, 10, "  W / A / D : Navigate nodes    T : Place symbol    R : Remove    F : Finalize", textCol);
+        put(cn, 2, 11, "  Tree requires >= 3 distinct variables and a depth of >= 3 to finalize.", dimCol);
+        put(cn, 2, 12, "  Finalizing awards: (number of filled nodes) x 10 points.", dimCol);
+
+        put(cn, 2, 14, "SCREEN 3  -  TRUTH TABLE & KARNAUGH MAP", sectionCol);
+        put(cn, 2, 15, "  One cell per column is hidden — type the correct 0 or 1 to fill it in.", textCol);
+        put(cn, 2, 16, "  Correct cell: +3 pts   |   Wrong cell: -2 pts", dimCol);
+        put(cn, 2, 17, "  K-Map solved via Quine-McCluskey. Match the SOP = bonus equal to tree score.", dimCol);
+
+        put(cn, 2, 19, "SCORING SUMMARY", sectionCol);
+        put(cn, 2, 20, "  Shoot robot    +50 pts       Tree finalize    nodes x 10 pts", textCol);
+        put(cn, 2, 21, "  K-Map match    +tree pts     Tree navigate    -1 pt / move", textCol);
+        put(cn, 2, 22, "  Remove symbol  -2 pts        Wrong truth cell  -2 pts", dimCol);
+
+        putCentered(cn, 27, "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", grayCol);
+        putCentered(cn, 28, "Press any key to return to menu...", grayCol);
+        waitForKey(cn);
+    }
+
+    // ── Utilities ──────────────────────────────────────────────────────────────
+
+    private void clearScreen(enigma.console.Console cn) {
+        for (int r = 0; r < ROWS; r++)
+            for (int c = 0; c < COLS; c++)
+                cn.getTextWindow().output(c, r, ' ');
+    }
+
+    private void put(enigma.console.Console cn, int col, int row, String text, TextAttributes ta) {
+        for (int i = 0; i < text.length() && col + i < COLS; i++)
+            cn.getTextWindow().output(col + i, row, text.charAt(i), ta);
+    }
+
+    private void putCentered(enigma.console.Console cn, int row, String text, TextAttributes ta) {
+        put(cn, Math.max(0, (COLS - text.length()) / 2), row, text, ta);
     }
 
     private void waitForKey(enigma.console.Console cn) {
