@@ -49,6 +49,20 @@ public class Main {
     // orange fireball
     public static TextAttributes fireballColor  = new TextAttributes(Color.ORANGE, Color.BLACK);
 
+    static final TextAttributes VAR_COLOR  = new TextAttributes(Color.CYAN,                Color.BLACK);
+    static final TextAttributes NVAR_COLOR = new TextAttributes(new Color(0, 190, 190),    Color.BLACK);
+    static final TextAttributes OP_COLOR   = new TextAttributes(Color.YELLOW,              Color.BLACK);
+    static final TextAttributes WALL_COLOR = new TextAttributes(new Color(70, 90, 130),    Color.BLACK);
+    static final TextAttributes PLYR_COLOR = new TextAttributes(new Color(255, 220, 100),  Color.BLACK);
+    static final TextAttributes HUD_BORDER = new TextAttributes(new Color(80, 100, 200),   Color.BLACK);
+    static final TextAttributes HUD_TITLE  = new TextAttributes(new Color(255, 210, 60),   Color.BLACK);
+    static final TextAttributes HUD_SECT   = new TextAttributes(new Color(160, 160, 255),  Color.BLACK);
+    static final TextAttributes HUD_LABEL  = new TextAttributes(Color.LIGHT_GRAY,          Color.BLACK);
+    static final TextAttributes HUD_VALUE  = new TextAttributes(Color.WHITE,               Color.BLACK);
+    static final TextAttributes HUD_HINT   = new TextAttributes(Color.GRAY,                Color.BLACK);
+    static final TextAttributes HUD_SLOT   = new TextAttributes(new Color(130, 130, 130),  Color.BLACK);
+    static final TextAttributes HUD_EMPTY  = new TextAttributes(new Color(55, 55, 55),     Color.BLACK);
+
     public static int     currentScreen   = 1;
     public static boolean treeFinalized   = false;
     public static boolean truthTableShown = false;
@@ -346,6 +360,18 @@ public class Main {
                     }
                 } else if (cell == 'o') {
                     cn.getTextWindow().output(x, y, 'o', fireballColor);
+                } else if (cell == '@') {
+                    cn.getTextWindow().output(x, y, '@', fireballColor);
+                } else if (cell == '#') {
+                    cn.getTextWindow().output(x, y, '#', WALL_COLOR);
+                } else if (cell == 'P') {
+                    cn.getTextWindow().output(x, y, 'P', PLYR_COLOR);
+                } else if ("ABCD".indexOf(cell) >= 0) {
+                    cn.getTextWindow().output(x, y, cell, VAR_COLOR);
+                } else if ("abcd".indexOf(cell) >= 0) {
+                    cn.getTextWindow().output(x, y, cell, NVAR_COLOR);
+                } else if ("^v+>=~".indexOf(cell) >= 0) {
+                    cn.getTextWindow().output(x, y, cell, OP_COLOR);
                 } else {
                     cn.getTextWindow().output(x, y, cell);
                 }
@@ -356,45 +382,74 @@ public class Main {
 
     /** Full right-panel redraw — call on startup and every screen switch. */
     public static void drawHUD() {
-        // Wipe the entire right panel so nothing bleeds from a previous screen
         for (int x = 45; x < 80; x++)
             for (int y = 0; y < Rows; y++)
                 cn.getTextWindow().output(x, y, ' ');
 
-        put(55, 3, "Input");
-        for (int i = 0; i < 10; i++) {
-            cn.getTextWindow().output(55 + i, 4, '<');
-            cn.getTextWindow().output(55 + i, 6, '<');
-        }
+        hudTopRow(0);
+        hudSideRow(1);
+        putC(51, 1, "T R E E   &   T A B L E", HUD_TITLE);
+        hudMidRow(2);
+        hudSideRow(3);
+        putC(47, 3, "INPUT QUEUE", HUD_SECT);
+        hudSideRow(4);
+        hudMidRow(5);
+        for (int r = 6; r <= 11; r++) hudSideRow(r);
+        hudMidRow(12);
+        hudSideRow(13);
+        putC(55, 13, "B A C K P A C K", HUD_SECT);
+        hudSideRow(14);
+        hudSideRow(15);
+        hudMidRow(16);
+        hudSideRow(17);
+        putC(47, 17, "1=Maze  2=Tree  3=K-Map", HUD_HINT);
+        hudSideRow(18);
+        putC(47, 18, "M=Toggle    SPACE=Fire", HUD_HINT);
+        hudSideRow(19);
+        hudBotRow(20);
+
         input_list();
         refreshStats();
         Backpack_Writer();
     }
 
     public static void refreshStats() {
-        // Atomic per-character writes — no shared cursor, safe from EDT/game-loop races
-        put(55,  8, pad("Time      : " + display_time, 22));
-        put(55,  9, pad("Score     : " + Score,        22));
-        put(55, 10, pad("Fireball  : " + Fireball,     22));
-        put(55, 11, pad("Life      : " + Life,         22));
+        putC(47,  6, "Time    : ", HUD_LABEL);
+        putC(57,  6, pad(String.valueOf(display_time), 21), HUD_VALUE);
+        putC(47,  7, "Score   : ", HUD_LABEL);
+        putC(57,  7, pad(String.valueOf(Score),        21), HUD_VALUE);
+        putC(47,  8, "Balls   : ", HUD_LABEL);
+        putC(57,  8, pad(String.valueOf(Fireball),     21), HUD_VALUE);
+        putC(47,  9, "Life    : ", HUD_LABEL);
+        putC(57,  9, pad(String.valueOf(Life),         21), HUD_VALUE);
 
-        int barLen = 10;
+        int barLen = 20;
         int filled = Math.max(0, (int)((float) Life / 100f * barLen));
         Color barColor = Life > 50 ? Color.GREEN : (Life > 25 ? Color.YELLOW : Color.RED);
         for (int i = 0; i < barLen; i++) {
-            if (i < filled)
-                cn.getTextWindow().output(55 + i, 12, '|', new TextAttributes(barColor, barColor));
-            else
-                cn.getTextWindow().output(55 + i, 12, '-', new TextAttributes(Color.DARK_GRAY, Color.DARK_GRAY));
+            char ch = i < filled ? '|' : '-';
+            TextAttributes ta = i < filled
+                ? new TextAttributes(barColor, Color.BLACK)
+                : new TextAttributes(Color.DARK_GRAY, Color.BLACK);
+            cn.getTextWindow().output(47 + i, 10, ch, ta);
         }
+        for (int c = 47 + barLen; c <= 78; c++) cn.getTextWindow().output(c, 10, ' ');
 
-        put(55, 13, pad("Storage   : " + (play != null && play.isStorageTree() ? "Tree" : "Backpack"), 22));
+        String mode = (play != null && play.isStorageTree()) ? "Tree    " : "Backpack";
+        putC(47, 11, "Mode    : ", HUD_LABEL);
+        putC(57, 11, pad(mode, 21), HUD_VALUE);
     }
 
     /** Writes text character-by-character at absolute (col, row) — no shared cursor, thread-safe. */
     public static void put(int col, int row, String text) {
         for (int i = 0; i < text.length() && col + i < 80; i++)
             cn.getTextWindow().output(col + i, row, text.charAt(i));
+    }
+
+    /** Like put() but applies a TextAttributes color to every character. */
+    public static void putC(int col, int row, String text, TextAttributes ta) {
+        for (int i = 0; i < text.length() && col + i < 80; i++)
+            cn.getTextWindow().output(col + i, row, text.charAt(i), ta);
     }
 
     /** Right-pads s with spaces to length n, or truncates if longer. */
@@ -406,11 +461,12 @@ public class Main {
     }
 
     public static void input_list() {
-        for (int i = 0; i < 10; i++) cn.getTextWindow().output(55 + i, 5, ' '); // clear stale symbols
+        for (int i = 0; i < 10; i++) cn.getTextWindow().output(47 + i, 4, ' ');
         CircularQueue temp = new CircularQueue(10);
         int k = input_q.Size();
         for (int i = 0; i < k; i++) {
-            cn.getTextWindow().output(55 + i, 5, (char) input_q.Peek());
+            char sym = (char) input_q.Peek();
+            cn.getTextWindow().output(47 + i, 4, sym, itemColor(sym));
             temp.Enqueue(input_q.Dequeue());
         }
         int kl = temp.Size();
@@ -418,20 +474,59 @@ public class Main {
     }
 
     public static void Backpack_Writer() {
+        char[] slots = new char[8];
         Stack temp = new Stack(8);
         for (int i = 0; i < 8; i++) {
             if (!backpack.isEmpty()) {
-                char sym = (char) backpack.pop();
-                put(60, 21 - i, "| " + sym + " |");
-                temp.push(sym);
-            } else {
-                put(60, 21 - i, "|   |");
+                slots[i] = (char) backpack.pop();
+                temp.push(slots[i]);
             }
         }
         int k = temp.size();
         for (int i = 0; i < k; i++) backpack.push(temp.pop());
-        put(60, 22, "+---+");
-        put(58, 23, " Backpack");
+        drawSlotRow(14, slots, 0);
+        drawSlotRow(15, slots, 4);
+    }
+
+    private static void drawSlotRow(int row, char[] slots, int startIdx) {
+        int col = 47;
+        for (int i = 0; i < 4; i++) {
+            char sym = (startIdx + i < slots.length) ? slots[startIdx + i] : 0;
+            cn.getTextWindow().output(col,   row, (char)('0' + startIdx + i + 1), HUD_SLOT);
+            cn.getTextWindow().output(col+1, row, ':',   HUD_SLOT);
+            cn.getTextWindow().output(col+2, row, '[',   HUD_SLOT);
+            cn.getTextWindow().output(col+3, row, sym != 0 ? sym : ' ', sym != 0 ? itemColor(sym) : HUD_EMPTY);
+            cn.getTextWindow().output(col+4, row, ']',   HUD_SLOT);
+            col += 8;
+        }
+        for (int c = 76; c <= 78; c++) cn.getTextWindow().output(c, row, ' ');
+    }
+
+    private static TextAttributes itemColor(char c) {
+        if ("ABCD".indexOf(c) >= 0) return VAR_COLOR;
+        if ("abcd".indexOf(c) >= 0) return NVAR_COLOR;
+        if ("^v+>=~".indexOf(c) >= 0) return OP_COLOR;
+        return HUD_VALUE;
+    }
+
+    private static void hudTopRow(int row) {
+        cn.getTextWindow().output(45, row, '╔', HUD_BORDER);
+        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '═', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '╗', HUD_BORDER);
+    }
+    private static void hudMidRow(int row) {
+        cn.getTextWindow().output(45, row, '╠', HUD_BORDER);
+        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '═', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '╣', HUD_BORDER);
+    }
+    private static void hudBotRow(int row) {
+        cn.getTextWindow().output(45, row, '╚', HUD_BORDER);
+        for (int c = 46; c <= 78; c++) cn.getTextWindow().output(c, row, '═', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '╝', HUD_BORDER);
+    }
+    private static void hudSideRow(int row) {
+        cn.getTextWindow().output(45, row, '║', HUD_BORDER);
+        cn.getTextWindow().output(79, row, '║', HUD_BORDER);
     }
 
     private static void clearMazeArea() {
