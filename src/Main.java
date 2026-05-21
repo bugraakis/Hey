@@ -38,10 +38,8 @@ public class Main {
     public static boolean death         = false;
     public static boolean move          = false;
 
-    // buffered player actions — set on EDT, consumed on main thread to avoid race conditions
-    public static volatile int     pendingMove   = 0;
-    public static volatile boolean pendingFire   = false;
-    public static volatile boolean pendingToggle = false;
+    // last key pressed — set by key listener, consumed once per game tick
+    public static volatile int pendingKey = 0;
 
     // green = wandering, red = chasing player
     public static TextAttributes randommColor   = new TextAttributes(Color.GREEN, Color.BLACK);
@@ -70,8 +68,6 @@ public class Main {
     public static boolean truthTableShown = false;
     public static String  finalizedInfix  = null;
     public static boolean treeInvalidMsg  = false;
-
-    public static volatile int rkey = 0;
 
     // pixel positions for the 15 tree nodes on screen 2
     public static final int[] treeX = {0,
@@ -119,23 +115,11 @@ public class Main {
             long start = System.currentTimeMillis();
             time_unit++;
 
+            int k = pendingKey;
+            if (k != 0) { pendingKey = 0; handleKey(k); }
+
             if (currentScreen == 1) {
                 while (!input_q.isFull()) in.Generator(); // keep queue topped up
-
-                // apply buffered player actions here on the main thread — safe from race conditions
-                if (pendingMove != 0) {
-                    play.Movement(pendingMove);
-                    pendingMove = 0;
-                }
-                if (pendingFire) {
-                    firePlayerBall();
-                    pendingFire = false;
-                }
-                if (pendingToggle) {
-                    play.toggleStorage();
-                    pendingToggle = false;
-                    refreshStats();
-                }
 
                 moveFireballs();
                 applyNeighbourDamage();
@@ -184,10 +168,9 @@ public class Main {
     private static void registerKeyListener() {
         cn.getTextWindow().addKeyListener(new KeyListener() {
             public void keyTyped(KeyEvent e) {}
-            public void keyReleased(KeyEvent e) { rkey = 0; }
+            public void keyReleased(KeyEvent e) { pendingKey = 0; }
             public void keyPressed(KeyEvent e) {
-                if (death) return;
-                handleKey(e.getKeyCode());
+                if (!death) pendingKey = e.getKeyCode();
             }
         });
     }
@@ -213,12 +196,12 @@ public class Main {
 
         if (currentScreen == 1) {
             switch (k) {
-                case KeyEvent.VK_UP:    pendingMove = 2;     break;
-                case KeyEvent.VK_DOWN:  pendingMove = -2;    break;
-                case KeyEvent.VK_LEFT:  pendingMove = -1;    break;
-                case KeyEvent.VK_RIGHT: pendingMove = 1;     break;
-                case KeyEvent.VK_SPACE: pendingFire = true;  break;
-                case KeyEvent.VK_M:     pendingToggle = true; break;
+                case KeyEvent.VK_UP:    play.Movement(2);    break;
+                case KeyEvent.VK_DOWN:  play.Movement(-2);   break;
+                case KeyEvent.VK_LEFT:  play.Movement(-1);   break;
+                case KeyEvent.VK_RIGHT: play.Movement(1);    break;
+                case KeyEvent.VK_SPACE: firePlayerBall();    break;
+                case KeyEvent.VK_M:     play.toggleStorage(); break;
             }
         } else if (currentScreen == 2) {
             handleTreeKey(k);

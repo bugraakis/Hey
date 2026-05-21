@@ -128,58 +128,40 @@ public class Menu {
     }
 
     private char[][] generateMaze() {
-        // Each maze "cell" occupies char (cx*2+1, cy*2+1).
-        // Walls between cells are the chars between them.
-        int CW = (COLS - 1) / 2; // 39 cells wide
-        int CH = (ROWS - 1) / 2; // 14 cells tall
-
+        int CW = (COLS - 1) / 2; // number of cells wide
+        int CH = (ROWS - 1) / 2; // number of cells tall
         char[][] grid = new char[COLS][ROWS];
         for (int c = 0; c < COLS; c++)
             for (int r = 0; r < ROWS; r++)
                 grid[c][r] = '#';
 
-        boolean[][] vis    = new boolean[CW][CH];
-        int[]       stackC = new int[CW * CH + 1];
-        int[]       stackR = new int[CW * CH + 1];
-        int top = 0;
-
-        vis[0][0] = true;
-        grid[1][1] = ' ';
-        stackC[top] = 0; stackR[top] = 0; top++;
-
-        int[] dC = {0, 0, 1, -1};
-        int[] dR = {1, -1, 0, 0};
-
-        while (top > 0) {
-            int cx = stackC[top - 1];
-            int cy = stackR[top - 1];
-
-            // Collect unvisited neighbours
-            int[] ndirs = new int[4];
-            int   nc    = 0;
-            for (int d = 0; d < 4; d++) {
-                int nx = cx + dC[d], ny = cy + dR[d];
-                if (nx >= 0 && nx < CW && ny >= 0 && ny < CH && !vis[nx][ny])
-                    ndirs[nc++] = d;
-            }
-
-            if (nc == 0) {
-                top--; // backtrack
-            } else {
-                int d  = ndirs[rng.nextInt(nc)];
-                int nx = cx + dC[d], ny = cy + dR[d];
-                grid[cx * 2 + 1 + dC[d]][cy * 2 + 1 + dR[d]] = ' '; // carve wall
-                grid[nx * 2 + 1][ny * 2 + 1]                  = ' '; // open cell
-                vis[nx][ny] = true;
-                stackC[top] = nx; stackR[top] = ny; top++;
-            }
-        }
+        carve(grid, new boolean[CW][CH], CW, CH, 0, 0);
 
         // Clear the outer border so the maze appears to extend beyond the screen
         for (int c = 0; c < COLS; c++) { grid[c][0] = ' '; grid[c][ROWS - 1] = ' '; }
         for (int r = 0; r < ROWS; r++) { grid[0][r] = ' '; grid[COLS - 1][r]  = ' '; }
-
         return grid;
+    }
+
+    // Recursive DFS: visit cell (cx,cy), open it, then try all 4 directions in random order
+    private void carve(char[][] grid, boolean[][] vis, int CW, int CH, int cx, int cy) {
+        vis[cx][cy] = true;
+        grid[cx * 2 + 1][cy * 2 + 1] = ' ';
+
+        int[] dC = {0, 0, 1, -1};
+        int[] dR = {1, -1, 0, 0};
+        int[] dirs = {0, 1, 2, 3};
+        for (int i = 3; i > 0; i--) {          // Fisher-Yates shuffle
+            int j = rng.nextInt(i + 1);
+            int tmp = dirs[i]; dirs[i] = dirs[j]; dirs[j] = tmp;
+        }
+        for (int d : dirs) {
+            int nx = cx + dC[d], ny = cy + dR[d];
+            if (nx >= 0 && nx < CW && ny >= 0 && ny < CH && !vis[nx][ny]) {
+                grid[cx * 2 + 1 + dC[d]][cy * 2 + 1 + dR[d]] = ' '; // knock down wall
+                carve(grid, vis, CW, CH, nx, ny);
+            }
+        }
     }
 
     private int[] randomPassable() {
