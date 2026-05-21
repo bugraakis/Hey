@@ -98,6 +98,12 @@ public class ExpressionTree {
         return new FinalizeResult(infix, postfix, treeScore);
     }
 
+    /** Returns {infix, postfix} for the current tree without validation or scoring. */
+    public String[] peekExpression() {
+        if (nodes[1] == 0) return null;
+        return new String[]{ buildInfix(1), buildPostfix(1).trim() };
+    }
+
     // ── Internal helpers ─────────────────────────────────────────────────────
 
     private int countVariables() {

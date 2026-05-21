@@ -70,6 +70,11 @@ public class Player {
             return;
         }
 
+        // Auto-switch to tree storage when backpack is full
+        if (bp.isFull() && !storageTree) {
+            storageTree = true;
+        }
+
         // Logic symbol
         if (!bp.isFull()&&!isStorageTree()) {
             bp.push(cell);

@@ -263,8 +263,15 @@ public class Main {
         ExpressionTree.FinalizeResult result = exprTree.finalizeTree();
 
         if (result == null) {
-            put(2, 16, "Tree invalid! Need >=3 variables and depth >=3. -10 pts");
-            try { Thread.sleep(2000); } catch (InterruptedException e) {}
+            String[] expr = exprTree.peekExpression();
+            if (expr != null && !expr[0].isEmpty()) {
+                put(2, 14, "Infix  : " + expr[0]);
+                put(2, 15, "Postfix: " + expr[1]);
+            }
+            put(2, 16, "Invalid! Need >=3 vars and depth >=3.  -10 pts");
+            try { Thread.sleep(3000); } catch (InterruptedException e) {}
+            put(2, 14, "                                                        ");
+            put(2, 15, "                                                        ");
             put(2, 16, "                                                        ");
             refreshStats();
         } else {
