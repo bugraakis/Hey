@@ -13,7 +13,7 @@ import enigma.console.TextAttributes;
 
 public class Main {
 
-    public static enigma.console.Console cn = Enigma.getConsole("Tree & Table", 80, 30, 16, 25);
+    public static enigma.console.Console cn = Enigma.getConsole("Tree & Table", 80, 30, 20, 30);
 
 
     public static final int Columns = 45;
@@ -94,8 +94,8 @@ public class Main {
 
         play.Starting_Place();
 
-        Dashboard();
         Maze_Drawer(maze);
+        drawHUD();
 
         registerKeyListener();
 
@@ -177,40 +177,38 @@ public class Main {
     }
 
     public static void handleKey(int k) {
-        // 1/2/3 switch screens from anywhere
         if (k == KeyEvent.VK_1) {
-            if(currentScreen==3)return;
-
-
+            if (currentScreen == 3) return;
             currentScreen = 1;
             clearMazeArea();
-            clearRightPanelExtra(); // wipe any leftover finalize text
             Maze_Drawer(maze);
+            drawHUD(); // full right-panel redraw clears any tree/finalize leftovers
             return;
         }
         if (k == KeyEvent.VK_2) {
-            if(currentScreen==3)return;
-            currentScreen = 2; clearMazeArea(); treeDrawer(); return;
+            if (currentScreen == 3) return;
+            currentScreen = 2;
+            clearMazeArea();
+            drawHUD(); // full right-panel redraw before tree draws on top
+            treeDrawer();
+            return;
         }
-        if (k == KeyEvent.VK_3) { if (treeFinalized) currentScreen = 3; return; } // locked until tree is done
+        if (k == KeyEvent.VK_3) { if (treeFinalized) currentScreen = 3; return; }
 
         if (currentScreen == 1) {
-            // just buffer the intent — main thread applies it to avoid EDT/game-loop race condition
             switch (k) {
-                case KeyEvent.VK_UP:    pendingMove = 2;    break;
-                case KeyEvent.VK_DOWN:  pendingMove = -2;   break;
-                case KeyEvent.VK_LEFT:  pendingMove = -1;   break;
-                case KeyEvent.VK_RIGHT: pendingMove = 1;    break;
+                case KeyEvent.VK_UP:    pendingMove = 2;     break;
+                case KeyEvent.VK_DOWN:  pendingMove = -2;    break;
+                case KeyEvent.VK_LEFT:  pendingMove = -1;    break;
+                case KeyEvent.VK_RIGHT: pendingMove = 1;     break;
                 case KeyEvent.VK_SPACE: pendingFire = true;  break;
                 case KeyEvent.VK_M:     pendingToggle = true; break;
             }
         } else if (currentScreen == 2) {
             handleTreeKey(k);
-            if (currentScreen == 2) treeDrawer(); // redraw unless F succeeded (screen changed to 3)
+            if (currentScreen == 2) treeDrawer();
         }
-        if (currentScreen != 3) {
-            refreshStats();
-        }
+        if (currentScreen != 3) refreshStats();
     }
 
     private static void firePlayerBall() {
@@ -249,11 +247,9 @@ public class Main {
         ExpressionTree.FinalizeResult result = exprTree.finalizeTree();
 
         if (result == null) {
-            cn.getTextWindow().setCursorPosition(2, 16);
-            System.out.print("Tree invalid! Need >=3 variables and depth >=3. -10 pts");
+            put(2, 16, "Tree invalid! Need >=3 variables and depth >=3. -10 pts");
             try { Thread.sleep(2000); } catch (InterruptedException e) {}
-            cn.getTextWindow().setCursorPosition(2, 25);
-            System.out.print("                                                        ");
+            put(2, 16, "                                                        ");
             refreshStats();
         } else {
             treeFinalized = true;
@@ -261,15 +257,12 @@ public class Main {
 
             new Thread(() -> {
                 clearMazeArea();
-                cn.getTextWindow().setCursorPosition(5, 7);
-                System.out.print("Infix  : " + result.infix);
-                cn.getTextWindow().setCursorPosition(5, 8);
-                System.out.print("Postfix: " + result.postfix);
-                cn.getTextWindow().setCursorPosition(5, 10);
-                System.out.print("Tree Score: +" + result.treeScore + " pts");
+                put(5,  7, "Infix  : " + result.infix);
+                put(5,  8, "Postfix: " + result.postfix);
+                put(5, 10, "Tree Score: +" + result.treeScore + " pts");
 
                 try { Thread.sleep(2000); } catch (InterruptedException e) {}
-                finalizedTreeScore=result.treeScore;
+                finalizedTreeScore = result.treeScore;
                 clearMazeArea();
                 cn.getTextWindow().setCursorPosition(0, 0);
                 TruthTable(result.infix);
@@ -305,12 +298,9 @@ public class Main {
     private static void handleDeath() {
         clearMazeArea();
         int col = Columns / 2 - 5, row = Rows / 2;
-        cn.getTextWindow().setCursorPosition(col, row - 1);
-        System.out.print("  GAME OVER  ");
-        cn.getTextWindow().setCursorPosition(col, row);
-        System.out.print(" Score: " + Score + " ");
-        cn.getTextWindow().setCursorPosition(col, row + 1);
-        System.out.print(" Press any key ");
+        put(col, row - 1, "  GAME OVER  ");
+        put(col, row,     " Score: " + Score + " ");
+        put(col, row + 1, " Press any key ");
 
         final boolean[] pressed = {false};
         cn.getTextWindow().addKeyListener(new KeyListener() {
@@ -364,50 +354,59 @@ public class Main {
     }
 
 
-    public static void Dashboard() {
+    /** Full right-panel redraw — call on startup and every screen switch. */
+    public static void drawHUD() {
+        // Wipe the entire right panel so nothing bleeds from a previous screen
+        for (int x = 45; x < 80; x++)
+            for (int y = 0; y < Rows; y++)
+                cn.getTextWindow().output(x, y, ' ');
+
+        put(55, 3, "Input");
         for (int i = 0; i < 10; i++) {
             cn.getTextWindow().output(55 + i, 4, '<');
             cn.getTextWindow().output(55 + i, 6, '<');
         }
-        cn.getTextWindow().setCursorPosition(55, 3);
-        System.out.print("Input");
+        input_list();
         refreshStats();
+        Backpack_Writer();
     }
 
     public static void refreshStats() {
-        cn.getTextWindow().setCursorPosition(55, 8);
-        System.out.print("Time      : " + display_time + "   ");
-        cn.getTextWindow().setCursorPosition(55, 9);
-        System.out.print("Score     : " + Score + "   ");
-        cn.getTextWindow().setCursorPosition(55, 10);
-        System.out.print("Fireball  : " + Fireball + "   ");
-        cn.getTextWindow().setCursorPosition(55, 11);
-        System.out.print("Life      : " + Life + "   ");
+        // Atomic per-character writes — no shared cursor, safe from EDT/game-loop races
+        put(55,  8, pad("Time      : " + display_time, 22));
+        put(55,  9, pad("Score     : " + Score,        22));
+        put(55, 10, pad("Fireball  : " + Fireball,     22));
+        put(55, 11, pad("Life      : " + Life,         22));
 
-        int barLen    = 10;
-        int filled    = Math.max(0, (int)((float) Life / 100f * barLen));
+        int barLen = 10;
+        int filled = Math.max(0, (int)((float) Life / 100f * barLen));
         Color barColor = Life > 50 ? Color.GREEN : (Life > 25 ? Color.YELLOW : Color.RED);
         for (int i = 0; i < barLen; i++) {
-            if (i < filled) {
+            if (i < filled)
                 cn.getTextWindow().output(55 + i, 12, '|', new TextAttributes(barColor, barColor));
-            } else {
+            else
                 cn.getTextWindow().output(55 + i, 12, '-', new TextAttributes(Color.DARK_GRAY, Color.DARK_GRAY));
-            }
         }
 
-        cn.getTextWindow().setCursorPosition(55, 13);
-        System.out.print("Storage   : " + (play != null && play.isStorageTree() ? "Tree    " : "Backpack"));
+        put(55, 13, pad("Storage   : " + (play != null && play.isStorageTree() ? "Tree" : "Backpack"), 22));
     }
 
-    // wipe rows 15-20 of the right panel (finalize summary lives there)
-    private static void clearRightPanelExtra() {
-        for (int row = 15; row <= 20; row++) {
-            cn.getTextWindow().setCursorPosition(55, row);
-            System.out.print("                      ");
-        }
+    /** Writes text character-by-character at absolute (col, row) — no shared cursor, thread-safe. */
+    public static void put(int col, int row, String text) {
+        for (int i = 0; i < text.length() && col + i < 80; i++)
+            cn.getTextWindow().output(col + i, row, text.charAt(i));
+    }
+
+    /** Right-pads s with spaces to length n, or truncates if longer. */
+    private static String pad(String s, int n) {
+        if (s.length() >= n) return s.substring(0, n);
+        StringBuilder sb = new StringBuilder(s);
+        while (sb.length() < n) sb.append(' ');
+        return sb.toString();
     }
 
     public static void input_list() {
+        for (int i = 0; i < 10; i++) cn.getTextWindow().output(55 + i, 5, ' '); // clear stale symbols
         CircularQueue temp = new CircularQueue(10);
         int k = input_q.Size();
         for (int i = 0; i < k; i++) {
@@ -421,22 +420,18 @@ public class Main {
     public static void Backpack_Writer() {
         Stack temp = new Stack(8);
         for (int i = 0; i < 8; i++) {
-            cn.getTextWindow().setCursorPosition(60, 21 - i);
             if (!backpack.isEmpty()) {
                 char sym = (char) backpack.pop();
-                System.out.print("| " + sym + " |");
+                put(60, 21 - i, "| " + sym + " |");
                 temp.push(sym);
             } else {
-                System.out.print("|   |");
+                put(60, 21 - i, "|   |");
             }
         }
         int k = temp.size();
         for (int i = 0; i < k; i++) backpack.push(temp.pop());
-
-        cn.getTextWindow().setCursorPosition(60, 22);
-        System.out.print("+---+");
-        cn.getTextWindow().setCursorPosition(58, 23);
-        System.out.print(" Backpack");
+        put(60, 22, "+---+");
+        put(58, 23, " Backpack");
     }
 
     private static void clearMazeArea() {
@@ -697,30 +692,23 @@ public class Main {
             int cx      = treeX[i];
             int cy      = treeY[i];
             char symbol = nodes[i] == 0 ? '_' : nodes[i];
-            if (i == cursor) {
-
-                cn.getTextWindow().setCursorPosition(cx - 1, cy);
-                System.out.print("[" + symbol + "]");
-            } else {
-                cn.getTextWindow().setCursorPosition(cx, cy);
-                System.out.print(symbol);
-            }
+            if (i == cursor)
+                put(cx - 1, cy, "[" + symbol + "]");
+            else
+                cn.getTextWindow().output(cx, cy, symbol);
         }
 
-        cn.getTextWindow().setCursorPosition(2, 12);
-        System.out.print("W/A/D=Move(-1)  T=Place  R=Remove(-2)  ");
-        cn.getTextWindow().setCursorPosition(2, 13);
-        System.out.print("F=Finalize  [M]=ToggleMode  [Space]=Fire");
+        put(2, 12, "W/A/D=Move(-1)  T=Place  R=Remove(-2)  ");
+        put(2, 13, "F=Finalize  [M]=ToggleMode  [Space]=Fire");
 
         if (treeInvalidMsg) {
-            cn.getTextWindow().setCursorPosition(2, 15);
-            System.out.print("Invalid tree! Need >=3 variables and depth >=3. (-10 pts)");
+            put(2, 15, "Invalid tree! Need >=3 variables and depth >=3. (-10 pts)");
             treeInvalidMsg = false;
         } else {
-            cn.getTextWindow().setCursorPosition(2, 15);
-            System.out.print("                                                          ");
+            put(2, 15, "                                                          ");
         }
 
+        // Partial HUD update — drawHUD() was already called on the screen switch
         Backpack_Writer();
         refreshStats();
     }
