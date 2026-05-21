@@ -471,33 +471,30 @@ public class Main {
     }
 
     public static void Backpack_Writer() {
-        // Label centered above the stack (col 58 = center of right panel minus half of "BACKPACK")
         putC(58, 17, "BACKPACK", HUD_SECT);
+
+        // Drain into temp so oldest item ends up on top of temp
         Stack temp = new Stack(8);
-        // Draw 8 slots top→bottom: row 18 = top of stack (most recent), row 25 = bottom (first collected)
-        for (int i = 0; i < 8; i++) {
-            int row = 18 + i;
-            if (!backpack.isEmpty()) {
-                char sym = (char) backpack.pop();
-                temp.push(sym);
-                cn.getTextWindow().output(60, row, '|', HUD_SLOT);
-                cn.getTextWindow().output(61, row, ' ', HUD_SLOT);
-                cn.getTextWindow().output(62, row, sym,  itemColor(sym));
-                cn.getTextWindow().output(63, row, ' ', HUD_SLOT);
-                cn.getTextWindow().output(64, row, '|', HUD_SLOT);
-            } else {
-                cn.getTextWindow().output(60, row, '|',  HUD_SLOT);
-                cn.getTextWindow().output(61, row, ' ',  HUD_EMPTY);
-                cn.getTextWindow().output(62, row, ' ',  HUD_EMPTY);
-                cn.getTextWindow().output(63, row, ' ',  HUD_EMPTY);
-                cn.getTextWindow().output(64, row, '|',  HUD_SLOT);
-            }
+        while (!backpack.isEmpty()) temp.push(backpack.pop());
+        int count = temp.size();
+        char[] items = new char[count];
+        for (int i = 0; i < count; i++) items[i] = (char) temp.pop(); // items[0]=oldest
+
+        // Row 25 = oldest (against bottom border), fill upward; empty slots float at top
+        for (int row = 18; row <= 25; row++) {
+            int idx = 25 - row; // row 25 → idx 0 (oldest), row 18 → idx 7
+            boolean filled = idx < count;
+            char sym = filled ? items[idx] : 0;
+            cn.getTextWindow().output(60, row, '|', HUD_SLOT);
+            cn.getTextWindow().output(61, row, ' ', filled ? HUD_SLOT  : HUD_EMPTY);
+            cn.getTextWindow().output(62, row, filled ? sym : ' ', filled ? itemColor(sym) : HUD_EMPTY);
+            cn.getTextWindow().output(63, row, ' ', filled ? HUD_SLOT  : HUD_EMPTY);
+            cn.getTextWindow().output(64, row, '|', HUD_SLOT);
         }
-        // Closed bottom
         put(60, 26, "+---+");
-        // Restore backpack (double-reversal preserves original order)
-        int k = temp.size();
-        for (int i = 0; i < k; i++) backpack.push(temp.pop());
+
+        // Restore: push oldest first so newest ends up on top of stack again
+        for (int i = 0; i < count; i++) backpack.push(items[i]);
     }
 
     private static TextAttributes itemColor(char c) {
